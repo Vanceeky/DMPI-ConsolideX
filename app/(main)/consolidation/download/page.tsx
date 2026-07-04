@@ -222,7 +222,7 @@ export default function DownloadPage() {
                       onClick={handleDownload}
                       disabled={dlState === "loading"}
                       className={cn(
-                        "mt-4 inline-flex items-center gap-2 text-[13px] font-semibold h-9 px-5 rounded-lg transition-all",
+                        "mt-4 inline-flex items-center gap-2 text-[13px] font-semibold h-9 px-5 rounded-lg transition-all cursor-pointer",
                         dlState === "done"
                           ? "bg-[#dcfce7] text-[#15803d] cursor-default"
                           : dlState === "loading"
@@ -344,7 +344,7 @@ export default function DownloadPage() {
               onClick={handleDownload}
               disabled={dlState === "loading" || dlState === "done"}
               className={cn(
-                "inline-flex items-center gap-2 text-[13px] font-semibold h-9 px-5 rounded-lg transition-all",
+                "inline-flex items-center gap-2 text-[13px] font-semibold h-9 px-5 rounded-lg transition-all cursor-pointer",
                 dlState === "done"
                   ? "bg-[#dcfce7] text-[#15803d] cursor-default"
                   : dlState === "loading"

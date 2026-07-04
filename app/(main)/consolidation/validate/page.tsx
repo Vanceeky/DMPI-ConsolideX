@@ -515,7 +515,7 @@ export default function ValidatePage() {
                           key={tab}
                           onClick={() => setActiveTab(tab)}
                           className={cn(
-                            "flex items-center gap-2 px-5 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors",
+                            "flex items-center gap-2 px-5 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors cursor-pointer",
                             isActive
                               ? isPra
                                 ? "border-[#1d4ed8] text-[#1d4ed8]"

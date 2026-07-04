@@ -33,6 +33,7 @@ const REG_DATE_ALIASES     = ["regularization date", "reg date", "reg. date", "r
 const CONTRIBUTION_ALIASES = ["regular contribution", "reg contribution", "reg. contribution", "contribution"];
 const SPP_EE_SUBSTR        = ["spp ee cont", "ee cont", "spp ee contribution", "ee contribution"];
 const SPP_ER_SUBSTR        = ["spp er cont", "er cont", "spp er contribution", "er contribution"];
+const COST_CENTER_ALIASES  = ["cost center", "cost centre", "costcenter", "cost ctr", "cost_center"];
 const BIRTHDATE_ALIASES    = ["birthdate", "birth date", "birthday", "date of birth", "dob"];
 const HIRED_DATE_ALIASES   = ["hired date", "hire date", "date hired", "hiredate"];
 
@@ -258,6 +259,7 @@ export async function parsePRAFile(file: File): Promise<{
       middle:       findExact(headers, MIDDLE_ALIASES),
       empStatus:    findExact(headers, EMP_STATUS_ALIASES),
       location:     findExact(headers, LOCATION_ALIASES),
+      costCenter:   findExact(headers, COST_CENTER_ALIASES),
       regDate:      findExact(headers, REG_DATE_ALIASES),
       contribution: findExact(headers, CONTRIBUTION_ALIASES),
     };
@@ -289,6 +291,7 @@ export async function parsePRAFile(file: File): Promise<{
         middleInitial:       col.middle       >= 0 ? row[col.middle]       : "",
         employeeStatus,
         location,
+        costCenter:          col.costCenter   >= 0 ? row[col.costCenter]   : "",
         regularizationDate:  col.regDate      >= 0 ? row[col.regDate]      : "",
         regularContribution: col.contribution >= 0 ? row[col.contribution] : "",
       });
@@ -376,23 +379,24 @@ export async function parseSPPFile(file: File): Promise<{
     headers.filter(Boolean).forEach((c) => allColumns.add(c));
 
     const col = {
-      permEmp:   (() => {
+      permEmp:    (() => {
         let idx = findContains(headers, PERM_EMP_ALIASES);
         if (idx < 0) idx = findExact(headers, CHAPA_ALIASES);
         return idx;
       })(),
-      surname:   findExact(headers, SURNAME_ALIASES),
-      firstName: findExact(headers, FIRST_NAME_ALIASES),
-      middle:    findExact(headers, MIDDLE_ALIASES),
-      empStatus: findExact(headers, EMP_STATUS_ALIASES),
-      location:  (() => {
+      surname:    findExact(headers, SURNAME_ALIASES),
+      firstName:  findExact(headers, FIRST_NAME_ALIASES),
+      middle:     findExact(headers, MIDDLE_ALIASES),
+      empStatus:  findExact(headers, EMP_STATUS_ALIASES),
+      location:   (() => {
         // Prefer "Location Code" column, fall back to plain "Location"
         let idx = findExact(headers, LOCATION_CODE_ALIASES);
         if (idx < 0) idx = findExact(headers, LOCATION_ALIASES);
         return idx;
       })(),
-      eeCont:    findContains(headers, SPP_EE_SUBSTR),
-      erCont:    findContains(headers, SPP_ER_SUBSTR),
+      costCenter: findExact(headers, COST_CENTER_ALIASES),
+      eeCont:     findContains(headers, SPP_EE_SUBSTR),
+      erCont:     findContains(headers, SPP_ER_SUBSTR),
     };
 
     const sheetStart = allRecords.length;
@@ -420,13 +424,14 @@ export async function parseSPPFile(file: File): Promise<{
 
       allRecords.push({
         chapaNo:       chapa,
-        lastName:      col.surname   >= 0 ? row[col.surname]   : "",
-        firstName:     col.firstName >= 0 ? row[col.firstName] : "",
-        middleInitial: col.middle    >= 0 ? row[col.middle]    : "",
+        lastName:      col.surname    >= 0 ? row[col.surname]    : "",
+        firstName:     col.firstName  >= 0 ? row[col.firstName]  : "",
+        middleInitial: col.middle     >= 0 ? row[col.middle]     : "",
         employeeStatus,
         location,
-        sppEeCont:     col.eeCont >= 0 ? row[col.eeCont] : "",
-        sppErCont:     col.erCont >= 0 ? row[col.erCont] : "",
+        costCenter:    col.costCenter >= 0 ? row[col.costCenter] : "",
+        sppEeCont:     col.eeCont     >= 0 ? row[col.eeCont]     : "",
+        sppErCont:     col.erCont     >= 0 ? row[col.erCont]     : "",
       });
     }
 
@@ -522,6 +527,7 @@ const PRA_REQUIRED = [
   { label: "First Name",           check: (cols: string[]) => cols.some((h) => matchExact(h, FIRST_NAME_ALIASES)) },
   { label: "Employee Status",      check: (cols: string[]) => cols.some((h) => matchExact(h, EMP_STATUS_ALIASES)) },
   { label: "Location",             check: (cols: string[]) => cols.some((h) => matchExact(h, LOCATION_ALIASES)) },
+  { label: "Cost Center",          check: (cols: string[]) => cols.some((h) => matchExact(h, COST_CENTER_ALIASES)) },
   { label: "Regular Contribution", check: (cols: string[]) => cols.some((h) => matchExact(h, CONTRIBUTION_ALIASES)) },
 ];
 
@@ -531,6 +537,7 @@ const SPP_REQUIRED = [
       cols.some((h) => matchExact(h, PERM_EMP_ALIASES) || matchContains(h, PERM_EMP_ALIASES)) },
   { label: "Surname",        check: (cols: string[]) => cols.some((h) => matchExact(h, SURNAME_ALIASES)) },
   { label: "First Name",     check: (cols: string[]) => cols.some((h) => matchExact(h, FIRST_NAME_ALIASES)) },
+  { label: "Cost Center",    check: (cols: string[]) => cols.some((h) => matchExact(h, COST_CENTER_ALIASES)) },
   { label: "SPP EE Cont",    check: (cols: string[]) => cols.some((h) => matchContains(h, SPP_EE_SUBSTR)) },
   { label: "SPP ER Cont",    check: (cols: string[]) => cols.some((h) => matchContains(h, SPP_ER_SUBSTR)) },
 ];

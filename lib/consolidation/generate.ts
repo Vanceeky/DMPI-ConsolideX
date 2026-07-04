@@ -6,14 +6,14 @@ import type { PRAOutputRecord, SPPOutputRecord, FileMetadata, ProcessingResult }
 const PRA_HEADERS = [
   "CHAPA No.", "Last Name", "First Name", "Middle Initial",
   "Employee Status", "Location", "Birthdate", "Hired Date",
-  "Regularization Date", "Regular Contribution",
+  "Regularization Date", "Regular Contribution", "Cost Center",
 ];
 
 // SPP output uses "Perm. Emp. No." as the first column header
 const SPP_HEADERS = [
   "Perm. Emp. No.", "Last Name", "First Name", "Middle Initial",
   "Employee Status", "Location", "Birthdate", "Hired Date",
-  "SPP EE Contribution", "SPP ER Contribution",
+  "SPP EE Contribution", "SPP ER Contribution", "Cost Center",
 ];
 
 // ─── Style helpers ────────────────────────────────────────────────────────────
@@ -212,9 +212,9 @@ function buildPRASheet(records: PRAOutputRecord[], metadata: FileMetadata): XLSX
   const dataRows = records.map((r) => [
     r.chapaNo, r.lastName, r.firstName, r.middleInitial,
     r.employeeStatus, r.location, r.birthdate, r.hiredDate,
-    r.regularizationDate, r.regularContribution,
+    r.regularizationDate, r.regularContribution, r.costCenter,
   ]);
-  const totalRow = ["Total:", "", "", "", "", "", "", "", "", totalRC];
+  const totalRow = ["Total:", "", "", "", "", "", "", "", "", totalRC, ""];
   const summary  = buildPRASummary(records);
 
   const rows: unknown[][] = [
@@ -241,9 +241,9 @@ function buildSPPSheet(records: SPPOutputRecord[], metadata: FileMetadata): XLSX
   const dataRows = records.map((r) => [
     r.chapaNo, r.lastName, r.firstName, r.middleInitial,
     r.employeeStatus, r.location, r.birthdate, r.hiredDate,
-    r.sppEeCont, r.sppErCont,
+    r.sppEeCont, r.sppErCont, r.costCenter,
   ]);
-  const totalRow = ["Total:", "", "", "", "", "", "", "", totalEE, totalER];
+  const totalRow = ["Total:", "", "", "", "", "", "", "", totalEE, totalER, ""];
   const summary  = buildSPPSummary(records);
 
   const rows: unknown[][] = [

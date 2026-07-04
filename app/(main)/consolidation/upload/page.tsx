@@ -38,7 +38,7 @@ function FileChip({ file, onRemove }: { file: UploadedFile; onRemove: (id: strin
       </div>
       <button
         onClick={() => onRemove(file.id)}
-        className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-[#9ca3af] hover:text-[#ef4444] hover:bg-[#fef2f2] transition-colors"
+        className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-[#9ca3af] hover:text-[#ef4444] hover:bg-[#fef2f2] transition-colors cursor-pointer"
       >
         <Trash2 size={13} strokeWidth={2} />
       </button>
@@ -77,7 +77,7 @@ function MultiFileSection({
         {files.map((f) => <FileChip key={f.id} file={f} onRemove={onRemove} />)}
         <button
           onClick={() => inputRef.current?.click()}
-          className="flex items-center gap-2 border-2 border-dashed border-[#d1d5db] rounded-xl px-5 py-3 w-[190px] text-[13px] font-medium text-[#6b7280] hover:border-[#00488d] hover:text-[#00488d] hover:bg-[#f0f7ff] transition-colors"
+          className="flex items-center gap-2 border-2 border-dashed border-[#d1d5db] rounded-xl px-5 py-3 w-[190px] text-[13px] font-medium text-[#6b7280] hover:border-[#00488d] hover:text-[#00488d] hover:bg-[#f0f7ff] transition-colors cursor-pointer"
         >
           <CirclePlus size={16} strokeWidth={1.75} />
           Add File
@@ -124,7 +124,7 @@ function ReferenceDialog({
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-[#9ca3af] hover:text-[#374151] hover:bg-[#f3f4f6] transition-colors shrink-0">
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-[#9ca3af] hover:text-[#374151] hover:bg-[#f3f4f6] transition-colors shrink-0 cursor-pointer">
             <X size={15} strokeWidth={2} />
           </button>
         </div>
@@ -150,7 +150,7 @@ function ReferenceDialog({
                 <p className="text-[13px] font-medium text-[#111827] truncate" title={file.name}>{file.name}</p>
                 <p className="text-[11px] text-[#6b7280] mt-0.5">{formatFileSize(file.size)} &bull; Uploaded</p>
               </div>
-              <button onClick={onRemove} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-[#9ca3af] hover:text-[#ef4444] hover:bg-[#fef2f2] transition-colors">
+              <button onClick={onRemove} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-[#9ca3af] hover:text-[#ef4444] hover:bg-[#fef2f2] transition-colors cursor-pointer">
                 <Trash2 size={13} strokeWidth={2} />
               </button>
             </div>
@@ -158,7 +158,7 @@ function ReferenceDialog({
             <div className="border-2 border-dashed border-[#d1d5db] rounded-xl px-5 py-6 flex flex-col items-center gap-2 text-center">
               <Database size={22} className="text-[#d1d5db]" strokeWidth={1.5} />
               <p className="text-[12px] text-[#9ca3af]">No reference file selected</p>
-              <button onClick={() => inputRef.current?.click()} className="mt-1 text-[13px] font-semibold text-[#00488d] hover:underline">
+              <button onClick={() => inputRef.current?.click()} className="mt-1 text-[13px] font-semibold text-[#00488d] hover:underline cursor-pointer">
                 Browse file
               </button>
               <p className="text-[11px] text-[#c4c8d4]">.xlsx accepted</p>
@@ -221,7 +221,7 @@ export default function UploadPage() {
             <button
               onClick={() => setRefOpen(true)}
               className={cn(
-                "shrink-0 flex items-center gap-2 text-[13px] font-medium h-9 px-4 rounded-lg border transition-colors mt-1",
+                "shrink-0 flex items-center gap-2 text-[13px] font-medium h-9 px-4 rounded-lg border transition-colors mt-1 cursor-pointer",
                 referenceFile
                   ? "bg-[#f0fdf4] border-[#86efac] text-[#15803d] hover:bg-[#dcfce7]"
                   : "bg-white border-[#d1d5db] text-[#374151] hover:bg-[#f9fafb] hover:border-[#9ca3af]"

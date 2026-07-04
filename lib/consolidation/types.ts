@@ -22,6 +22,7 @@ export interface PRARawRecord {
   middleInitial: string;
   employeeStatus: string;
   location: string;
+  costCenter: string;
   regularizationDate: string;
   regularContribution: string;
 }
@@ -33,6 +34,7 @@ export interface SPPRawRecord {
   middleInitial: string;
   employeeStatus: string;
   location: string;
+  costCenter: string;
   sppEeCont: string;     // "SPP EE Cont for the Month of …"
   sppErCont: string;     // "SPP ER Cont for the Month of …"
 }

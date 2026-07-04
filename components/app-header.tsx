@@ -66,10 +66,10 @@ export function AppHeader() {
 
       {/* Actions */}
       <div className="flex items-center gap-2">
-        <button className="flex items-center justify-center w-8 h-8 rounded-lg text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#374151] transition-colors">
+        <button className="flex items-center justify-center w-8 h-8 rounded-lg text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#374151] transition-colors cursor-pointer">
           <Bell size={16} strokeWidth={2} />
         </button>
-        <button className="flex items-center justify-center w-8 h-8 rounded-lg text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#374151] transition-colors">
+        <button className="flex items-center justify-center w-8 h-8 rounded-lg text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#374151] transition-colors cursor-pointer">
           <CircleHelp size={16} strokeWidth={2} />
         </button>
         <Button size="sm" className="bg-[#00488d] hover:bg-[#003a72] text-white text-[13px] h-8 px-3 rounded-lg ml-1">
