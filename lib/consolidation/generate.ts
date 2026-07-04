@@ -229,7 +229,7 @@ function buildPRASheet(records: PRAOutputRecord[], metadata: FileMetadata): XLSX
   ];
 
   const ws          = XLSX.utils.aoa_to_sheet(rows);
-  ws['!sheetViews'] = [{ showGridLines: false }];
+  ws['!views'] = [{ showGridLines: false }];
   const totalRowIdx = 5 + dataRows.length;
   applySheetStyles(ws, PRA_HEADERS.length, totalRowIdx, totalRowIdx + 1, summary);
   return ws;
@@ -258,7 +258,7 @@ function buildSPPSheet(records: SPPOutputRecord[], metadata: FileMetadata): XLSX
   ];
 
   const ws          = XLSX.utils.aoa_to_sheet(rows);
-  ws['!sheetViews'] = [{ showGridLines: false }];
+  ws['!views'] = [{ showGridLines: false }];
   const totalRowIdx = 5 + dataRows.length;
   applySheetStyles(ws, SPP_HEADERS.length, totalRowIdx, totalRowIdx + 1, summary);
   return ws;
