@@ -254,7 +254,7 @@ function SummaryPanel({ validation }: { validation: ValidationState }) {
 export default function ValidatePage() {
   const {
     praFiles, sppFiles,
-    praReferenceFile, sppReferenceFile,
+    referenceFile,
     validation, setValidation,
   } = useConsolidation();
 
@@ -283,9 +283,8 @@ export default function ValidatePage() {
         ]);
 
         let refResult: ReferenceValidationResult | null = null;
-        const refFile = praReferenceFile ?? sppReferenceFile;
-        if (refFile) {
-          refResult = await validateReferenceFile(refFile);
+        if (referenceFile) {
+          refResult = await validateReferenceFile(referenceFile);
         }
 
         const totalPraRows = praResults.reduce((s, r) => s + r.totalRows, 0);
@@ -312,7 +311,7 @@ export default function ValidatePage() {
 
     runValidation();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [praFiles, sppFiles, praReferenceFile, sppReferenceFile]);
+  }, [praFiles, sppFiles, referenceFile]);
 
   const allResults: FileValidationResult[] = [
     ...(validation?.praResults ?? []),

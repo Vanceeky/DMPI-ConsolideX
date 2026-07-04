@@ -134,7 +134,7 @@ function QueueCard({ label, badge, badgeColor, files, sheetCount }: {
 export default function ProcessPage() {
   const {
     praFiles, sppFiles,
-    praReferenceFile, sppReferenceFile,
+    referenceFile,
     setProcessingResult, setOutputBlob,
   } = useConsolidation();
 
@@ -203,44 +203,32 @@ export default function ProcessPage() {
         };
         await advance(42, 500);
 
-        // ── Step 3: Reference lookups (separate per type) ─────────────────
-        const buildRefMap = async (refFile: typeof praReferenceFile) => {
-          const map = new Map<string, { birthdate: string; hiredDate: string }>();
-          if (!refFile) return map;
+        // ── Step 3: Build reference lookup (shared for PRA + SPP) ─────────
+        const refMap = new Map<string, { birthdate: string; hiredDate: string }>();
+        if (referenceFile) {
           try {
-            const { records } = await parseReferenceFile(refFile.file);
+            const { records } = await parseReferenceFile(referenceFile.file);
             for (const r of records) {
-              map.set(String(r.chapaNo).trim(), { birthdate: r.birthdate, hiredDate: r.hiredDate });
+              refMap.set(String(r.chapaNo).trim(), { birthdate: r.birthdate, hiredDate: r.hiredDate });
             }
           } catch (e) {
-            parseWarnings.push(`Reference "${refFile.name}": ${e instanceof Error ? e.message : "parse error"}`);
+            parseWarnings.push(`Reference "${referenceFile.name}": ${e instanceof Error ? e.message : "parse error"}`);
             setWarnings([...parseWarnings]);
           }
-          return map;
-        };
-
-        const [praRefMap, sppRefMap] = await Promise.all([
-          buildRefMap(praReferenceFile),
-          buildRefMap(sppReferenceFile),
-        ]);
+        }
         await advance(63, 600);
 
         const unmatchedSet = new Set<string>();
 
-        const lookupPRA = (chapaNo: string) => {
-          const ref = praRefMap.get(String(chapaNo).trim());
-          if (!ref && praReferenceFile) unmatchedSet.add(chapaNo);
-          return { birthdate: ref?.birthdate ?? "", hiredDate: ref?.hiredDate ?? "" };
-        };
-        const lookupSPP = (chapaNo: string) => {
-          const ref = sppRefMap.get(String(chapaNo).trim());
-          if (!ref && sppReferenceFile) unmatchedSet.add(chapaNo);
+        const lookup = (chapaNo: string) => {
+          const ref = refMap.get(String(chapaNo).trim());
+          if (!ref && referenceFile) unmatchedSet.add(chapaNo);
           return { birthdate: ref?.birthdate ?? "", hiredDate: ref?.hiredDate ?? "" };
         };
 
         // ── Step 4: Enrich ────────────────────────────────────────────────
-        const praEnriched: PRAOutputRecord[] = praRecordsRaw.map((r) => ({ ...r, ...lookupPRA(r.chapaNo) }));
-        const sppEnriched: SPPOutputRecord[] = sppRecordsRaw.map((r) => ({ ...r, ...lookupSPP(r.chapaNo) }));
+        const praEnriched: PRAOutputRecord[] = praRecordsRaw.map((r) => ({ ...r, ...lookup(r.chapaNo) }));
+        const sppEnriched: SPPOutputRecord[] = sppRecordsRaw.map((r) => ({ ...r, ...lookup(r.chapaNo) }));
         await advance(88, 500);
 
         // ── Step 5: Generate output ───────────────────────────────────────
@@ -348,27 +336,17 @@ export default function ProcessPage() {
                       badgeColor="bg-[#f0fdf4] text-[#15803d] border-[#bbf7d0]"
                       files={sppFiles}
                     />
-                    {(praReferenceFile || sppReferenceFile) && (
+                    {referenceFile && (
                       <div className="bg-[#f9fafb] border border-[#e5e7eb] rounded-xl p-4 flex-1">
                         <div className="flex items-center gap-2 mb-3">
                           <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border bg-[#f3f4f6] text-[#6b7280] border-[#e5e7eb]">
                             REF
                           </span>
-                          <span className="text-[12px] font-medium text-[#374151]">Reference files</span>
+                          <span className="text-[12px] font-medium text-[#374151]">Reference file</span>
                         </div>
-                        <div className="space-y-1.5">
-                          {praReferenceFile && (
-                            <div className="flex items-center gap-2">
-                              <FileText size={12} className="text-[#9ca3af] shrink-0" strokeWidth={1.5} />
-                              <span className="text-[11px] text-[#374151] truncate">PRA: {praReferenceFile.name}</span>
-                            </div>
-                          )}
-                          {sppReferenceFile && (
-                            <div className="flex items-center gap-2">
-                              <FileText size={12} className="text-[#9ca3af] shrink-0" strokeWidth={1.5} />
-                              <span className="text-[11px] text-[#374151] truncate">SPP: {sppReferenceFile.name}</span>
-                            </div>
-                          )}
+                        <div className="flex items-center gap-2">
+                          <FileText size={12} className="text-[#9ca3af] shrink-0" strokeWidth={1.5} />
+                          <span className="text-[11px] text-[#374151] truncate">{referenceFile.name}</span>
                         </div>
                       </div>
                     )}

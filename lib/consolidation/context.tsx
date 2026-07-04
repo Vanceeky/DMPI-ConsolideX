@@ -16,16 +16,14 @@ import type {
 interface ConsolidationState {
   praFiles: UploadedFile[];
   sppFiles: UploadedFile[];
-  praReferenceFile: UploadedFile | null;
-  sppReferenceFile: UploadedFile | null;
+  referenceFile: UploadedFile | null;
   validation: ValidationState | null;
   processingResult: ProcessingResult | null;
   outputBlob: Blob | null;
 
   setPraFiles: (files: UploadedFile[]) => void;
   setSppFiles: (files: UploadedFile[]) => void;
-  setPraReferenceFile: (file: UploadedFile | null) => void;
-  setSppReferenceFile: (file: UploadedFile | null) => void;
+  setReferenceFile: (file: UploadedFile | null) => void;
   setValidation: (v: ValidationState | null) => void;
   setProcessingResult: (r: ProcessingResult | null) => void;
   setOutputBlob: (b: Blob | null) => void;
@@ -35,13 +33,12 @@ interface ConsolidationState {
 const ConsolidationContext = createContext<ConsolidationState | null>(null);
 
 export function ConsolidationProvider({ children }: { children: ReactNode }) {
-  const [praFiles, setPraFilesRaw]       = useState<UploadedFile[]>([]);
-  const [sppFiles, setSppFilesRaw]       = useState<UploadedFile[]>([]);
-  const [praReferenceFile, setPraReferenceFile] = useState<UploadedFile | null>(null);
-  const [sppReferenceFile, setSppReferenceFile] = useState<UploadedFile | null>(null);
-  const [validation, setValidation]      = useState<ValidationState | null>(null);
+  const [praFiles, setPraFilesRaw]     = useState<UploadedFile[]>([]);
+  const [sppFiles, setSppFilesRaw]     = useState<UploadedFile[]>([]);
+  const [referenceFile, setReferenceFile] = useState<UploadedFile | null>(null);
+  const [validation, setValidation]    = useState<ValidationState | null>(null);
   const [processingResult, setProcessingResult] = useState<ProcessingResult | null>(null);
-  const [outputBlob, setOutputBlob]      = useState<Blob | null>(null);
+  const [outputBlob, setOutputBlob]    = useState<Blob | null>(null);
 
   // Clear validation whenever files change so validate page always re-scans
   const setPraFiles = useCallback((files: UploadedFile[]) => {
@@ -57,8 +54,7 @@ export function ConsolidationProvider({ children }: { children: ReactNode }) {
   const reset = useCallback(() => {
     setPraFilesRaw([]);
     setSppFilesRaw([]);
-    setPraReferenceFile(null);
-    setSppReferenceFile(null);
+    setReferenceFile(null);
     setValidation(null);
     setProcessingResult(null);
     setOutputBlob(null);
@@ -67,11 +63,9 @@ export function ConsolidationProvider({ children }: { children: ReactNode }) {
   return (
     <ConsolidationContext.Provider
       value={{
-        praFiles, sppFiles,
-        praReferenceFile, sppReferenceFile,
+        praFiles, sppFiles, referenceFile,
         validation, processingResult, outputBlob,
-        setPraFiles, setSppFiles,
-        setPraReferenceFile, setSppReferenceFile,
+        setPraFiles, setSppFiles, setReferenceFile,
         setValidation, setProcessingResult, setOutputBlob,
         reset,
       }}

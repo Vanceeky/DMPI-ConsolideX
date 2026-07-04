@@ -25,13 +25,14 @@ const REG_DATE_ALIASES     = ["regularization date", "reg date", "reg. date", "r
 const CONTRIBUTION_ALIASES = ["regular contribution", "reg contribution", "reg. contribution", "contribution"];
 const SPP_EE_SUBSTR        = ["spp ee cont", "ee cont", "spp ee contribution", "ee contribution"];
 const SPP_ER_SUBSTR        = ["spp er cont", "er cont", "spp er contribution", "er contribution"];
-const BIRTHDATE_ALIASES    = ["birthdate", "birth date", "date of birth", "dob"];
+const BIRTHDATE_ALIASES    = ["birthdate", "birth date", "birthday", "date of birth", "dob"];
 const HIRED_DATE_ALIASES   = ["hired date", "hire date", "date hired", "hiredate"];
 
 // ─── Matching helpers ─────────────────────────────────────────────────────────
 
 function normalize(s: unknown): string {
-  return String(s ?? "").trim().toLowerCase();
+  // Strip asterisks (e.g. "Date Hired *" → "date hired") before matching
+  return String(s ?? "").trim().toLowerCase().replace(/\*/g, "").trim();
 }
 
 function matchExact(header: string, aliases: string[]): boolean {

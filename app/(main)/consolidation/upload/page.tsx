@@ -46,14 +46,56 @@ function FileChip({ file, onRemove }: { file: UploadedFile; onRemove: (id: strin
   );
 }
 
-// ─── Reference dialog ─────────────────────────────────────────────────────────
+// ─── Multi-file section ───────────────────────────────────────────────────────
+
+function MultiFileSection({
+  label, description, badge, badgeColor,
+  files, inputRef, onAdd, onRemove,
+}: {
+  label: string; description: string; badge: string; badgeColor: string;
+  files: UploadedFile[]; inputRef: React.RefObject<HTMLInputElement | null>;
+  onAdd: (f: UploadedFile[]) => void; onRemove: (id: string) => void;
+}) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []).map((f) => ({
+      id: generateId(), name: f.name, size: f.size, file: f,
+    }));
+    onAdd(picked);
+    e.target.value = "";
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-1">
+        <h2 className="text-[15px] font-semibold text-[#111827]">{label}</h2>
+        <span className={cn("text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full", badgeColor)}>
+          {badge}
+        </span>
+      </div>
+      <p className="text-[13px] text-[#6b7280] mb-3">{description}</p>
+      <div className="flex flex-wrap gap-3">
+        {files.map((f) => <FileChip key={f.id} file={f} onRemove={onRemove} />)}
+        <button
+          onClick={() => inputRef.current?.click()}
+          className="flex items-center gap-2 border-2 border-dashed border-[#d1d5db] rounded-xl px-5 py-3 w-[190px] text-[13px] font-medium text-[#6b7280] hover:border-[#00488d] hover:text-[#00488d] hover:bg-[#f0f7ff] transition-colors"
+        >
+          <CirclePlus size={16} strokeWidth={1.75} />
+          Add File
+        </button>
+      </div>
+      <input ref={inputRef} type="file" accept=".xlsx,.xls" multiple className="hidden" onChange={handleChange} />
+    </div>
+  );
+}
+
+// ─── Reference dialog (shared for PRA + SPP) ─────────────────────────────────
 
 function ReferenceDialog({
-  open, onClose, file, inputRef, onSet, onRemove, label,
+  open, onClose, file, inputRef, onSet, onRemove,
 }: {
   open: boolean; onClose: () => void;
   file: UploadedFile | null; inputRef: React.RefObject<HTMLInputElement | null>;
-  onSet: (f: UploadedFile) => void; onRemove: () => void; label: string;
+  onSet: (f: UploadedFile) => void; onRemove: () => void;
 }) {
   if (!open) return null;
 
@@ -75,9 +117,11 @@ function ReferenceDialog({
             </div>
             <div>
               <h2 className="text-[15px] font-semibold text-[#111827] leading-tight">
-                {label} Reference File
+                Employee Reference File
               </h2>
-              <p className="text-[12px] text-[#6b7280] mt-0.5">Provides Birthdate &amp; Hired Date</p>
+              <p className="text-[12px] text-[#6b7280] mt-0.5">
+                Shared for both PRA &amp; SPP enrichment
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-[#9ca3af] hover:text-[#374151] hover:bg-[#f3f4f6] transition-colors shrink-0">
@@ -87,12 +131,15 @@ function ReferenceDialog({
 
         <div className="px-6 py-5">
           <p className="text-[12px] text-[#6b7280] mb-3">
-            Each employee is matched by <span className="font-medium text-[#374151]">CHAPA No.</span> and enriched with Birthdate and Hired Date. Unmatched records will be left blank.
+            Each employee is matched by <span className="font-medium text-[#374151]">CHAPA No.</span> and enriched with
+            Birthdate and Hired Date. This single file is used for both PRA and SPP. Unmatched records are left blank.
           </p>
           <p className="text-[11px] font-semibold text-[#9ca3af] uppercase tracking-wider mb-2">Required columns</p>
           <div className="flex flex-wrap gap-1.5 mb-5">
-            {["CHAPA No.", "Birthdate", "Hired Date"].map((col) => (
-              <span key={col} className="text-[11px] font-medium text-[#374151] bg-[#f3f4f6] border border-[#e5e7eb] rounded-full px-2.5 py-0.5">{col}</span>
+            {["CHAPA No.", "Birthday", "Date Hired *"].map((col) => (
+              <span key={col} className="text-[11px] font-medium text-[#374151] bg-[#f3f4f6] border border-[#e5e7eb] rounded-full px-2.5 py-0.5">
+                {col}
+              </span>
             ))}
           </div>
 
@@ -111,7 +158,9 @@ function ReferenceDialog({
             <div className="border-2 border-dashed border-[#d1d5db] rounded-xl px-5 py-6 flex flex-col items-center gap-2 text-center">
               <Database size={22} className="text-[#d1d5db]" strokeWidth={1.5} />
               <p className="text-[12px] text-[#9ca3af]">No reference file selected</p>
-              <button onClick={() => inputRef.current?.click()} className="mt-1 text-[13px] font-semibold text-[#00488d] hover:underline">Browse file</button>
+              <button onClick={() => inputRef.current?.click()} className="mt-1 text-[13px] font-semibold text-[#00488d] hover:underline">
+                Browse file
+              </button>
               <p className="text-[11px] text-[#c4c8d4]">.xlsx accepted</p>
             </div>
           )}
@@ -120,89 +169,13 @@ function ReferenceDialog({
         <div className="px-6 pb-5 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} className="text-[13px] h-9 px-4 border-[#d1d5db] text-[#374151]">Close</Button>
           {!file && (
-            <Button onClick={() => inputRef.current?.click()} className="text-[13px] h-9 px-4 bg-[#00488d] hover:bg-[#003a72] text-white">Select File</Button>
+            <Button onClick={() => inputRef.current?.click()} className="text-[13px] h-9 px-4 bg-[#00488d] hover:bg-[#003a72] text-white">
+              Select File
+            </Button>
           )}
         </div>
       </div>
       <input ref={inputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleChange} />
-    </div>
-  );
-}
-
-// ─── File section (PRA or SPP) ────────────────────────────────────────────────
-
-function FileSection({
-  label, description, badge, badgeColor,
-  files, fileInputRef, referenceFile,
-  refInputRef, refDialogOpen, setRefDialogOpen,
-  onAddFiles, onRemoveFile, onSetReference, onRemoveReference,
-}: {
-  label: string; description: string; badge: string; badgeColor: string;
-  files: UploadedFile[]; fileInputRef: React.RefObject<HTMLInputElement | null>;
-  referenceFile: UploadedFile | null;
-  refInputRef: React.RefObject<HTMLInputElement | null>;
-  refDialogOpen: boolean; setRefDialogOpen: (v: boolean) => void;
-  onAddFiles: (f: UploadedFile[]) => void; onRemoveFile: (id: string) => void;
-  onSetReference: (f: UploadedFile) => void; onRemoveReference: () => void;
-}) {
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = Array.from(e.target.files ?? []).map((f) => ({
-      id: generateId(), name: f.name, size: f.size, file: f,
-    }));
-    onAddFiles(picked);
-    e.target.value = "";
-  }
-
-  return (
-    <div>
-      {/* Section header */}
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <h2 className="text-[15px] font-semibold text-[#111827]">{label}</h2>
-          <span className={cn("text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full", badgeColor)}>
-            {badge}
-          </span>
-        </div>
-        {/* Inline reference button */}
-        <button
-          onClick={() => setRefDialogOpen(true)}
-          className={cn(
-            "flex items-center gap-1.5 text-[12px] font-medium h-7 px-3 rounded-lg border transition-colors",
-            referenceFile
-              ? "bg-[#f0fdf4] border-[#86efac] text-[#15803d] hover:bg-[#dcfce7]"
-              : "bg-white border-[#d1d5db] text-[#374151] hover:bg-[#f9fafb]"
-          )}
-        >
-          {referenceFile
-            ? <><CheckCircle2 size={12} strokeWidth={2} className="text-[#16a34a]" />Reference Set</>
-            : <><Database size={12} strokeWidth={1.75} className="text-[#6b7280]" />Set Reference</>}
-        </button>
-      </div>
-      <p className="text-[13px] text-[#6b7280] mb-3">{description}</p>
-
-      {/* File chips + add button */}
-      <div className="flex flex-wrap gap-3">
-        {files.map((f) => (
-          <FileChip key={f.id} file={f} onRemove={onRemoveFile} />
-        ))}
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-2 border-2 border-dashed border-[#d1d5db] rounded-xl px-5 py-3 w-[190px] text-[13px] font-medium text-[#6b7280] hover:border-[#00488d] hover:text-[#00488d] hover:bg-[#f0f7ff] transition-colors"
-        >
-          <CirclePlus size={16} strokeWidth={1.75} />
-          Add File
-        </button>
-      </div>
-
-      <input ref={fileInputRef} type="file" accept=".xlsx,.xls" multiple className="hidden" onChange={handleFileChange} />
-
-      {/* Reference dialog */}
-      <ReferenceDialog
-        open={refDialogOpen} onClose={() => setRefDialogOpen(false)}
-        file={referenceFile} inputRef={refInputRef}
-        onSet={onSetReference} onRemove={onRemoveReference}
-        label={badge}
-      />
     </div>
   );
 }
@@ -213,22 +186,16 @@ export default function UploadPage() {
   const {
     praFiles, setPraFiles,
     sppFiles, setSppFiles,
-    praReferenceFile, setPraReferenceFile,
-    sppReferenceFile, setSppReferenceFile,
+    referenceFile, setReferenceFile,
   } = useConsolidation();
 
-  const praFileInputRef = useRef<HTMLInputElement>(null);
-  const sppFileInputRef = useRef<HTMLInputElement>(null);
-  const praRefInputRef  = useRef<HTMLInputElement>(null);
-  const sppRefInputRef  = useRef<HTMLInputElement>(null);
+  const praInputRef = useRef<HTMLInputElement>(null);
+  const sppInputRef = useRef<HTMLInputElement>(null);
+  const refInputRef = useRef<HTMLInputElement>(null);
+  const [refOpen, setRefOpen] = useState(false);
 
-  const [praRefOpen, setPraRefOpen] = useState(false);
-  const [sppRefOpen, setSppRefOpen] = useState(false);
-
-  const totalUploaded =
-    praFiles.length + sppFiles.length +
-    (praReferenceFile ? 1 : 0) + (sppReferenceFile ? 1 : 0);
-  const canContinue = praFiles.length > 0 || sppFiles.length > 0;
+  const totalUploaded = praFiles.length + sppFiles.length + (referenceFile ? 1 : 0);
+  const canContinue   = praFiles.length > 0 || sppFiles.length > 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -240,43 +207,61 @@ export default function UploadPage() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-8 py-8">
-          <h1 className="text-[26px] font-semibold text-[#111827] tracking-tight">Step 1: Upload Files</h1>
-          <p className="text-[14px] text-[#6b7280] mt-1">Provide the necessary data sets for enterprise-wide consolidation.</p>
 
+          {/* Heading row */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-[26px] font-semibold text-[#111827] tracking-tight">Step 1: Upload Files</h1>
+              <p className="text-[14px] text-[#6b7280] mt-1">
+                Provide the necessary data sets for enterprise-wide consolidation.
+              </p>
+            </div>
+
+            {/* Single shared reference button */}
+            <button
+              onClick={() => setRefOpen(true)}
+              className={cn(
+                "shrink-0 flex items-center gap-2 text-[13px] font-medium h-9 px-4 rounded-lg border transition-colors mt-1",
+                referenceFile
+                  ? "bg-[#f0fdf4] border-[#86efac] text-[#15803d] hover:bg-[#dcfce7]"
+                  : "bg-white border-[#d1d5db] text-[#374151] hover:bg-[#f9fafb] hover:border-[#9ca3af]"
+              )}
+            >
+              {referenceFile
+                ? <><CheckCircle2 size={14} strokeWidth={2} className="text-[#16a34a]" />Reference File Set</>
+                : <><Database size={14} strokeWidth={1.75} className="text-[#6b7280]" />Set Reference File</>}
+            </button>
+          </div>
+
+          {/* Info banner */}
           <div className="flex items-start gap-3 mt-5 px-4 py-3.5 bg-[#eff6ff] border border-[#bfdbfe] rounded-xl">
             <Info size={15} className="text-[#3b82f6] mt-0.5 shrink-0" strokeWidth={2} />
             <p className="text-[13px] text-[#1d4ed8] leading-relaxed">
-              Upload PRA and SPP files separately. Each type has its own reference file for Birthdate &amp; Hired Date enrichment. The system auto-detects headers and ignores summary footers.
+              Upload PRA and SPP files separately. One shared reference file provides Birthdate &amp; Hired Date for all records.
+              The system auto-detects headers, ignores summary footers, and reads all Excel tabs.
             </p>
           </div>
 
+          {/* Upload zones */}
           <div className="mt-8 space-y-8">
-            <FileSection
+            <MultiFileSection
               label="PRA Contribution Register" badge="PRA"
               badgeColor="bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]"
-              description="Upload one or more PRA files. Tabs like BUGO or PLTN are detected automatically."
-              files={praFiles} fileInputRef={praFileInputRef}
-              referenceFile={praReferenceFile} refInputRef={praRefInputRef}
-              refDialogOpen={praRefOpen} setRefDialogOpen={setPraRefOpen}
-              onAddFiles={(f) => setPraFiles([...praFiles, ...f])}
-              onRemoveFile={(id) => setPraFiles(praFiles.filter((f) => f.id !== id))}
-              onSetReference={setPraReferenceFile}
-              onRemoveReference={() => setPraReferenceFile(null)}
+              description="Upload one or more PRA files. Tabs like BUGO or PLNT are detected automatically."
+              files={praFiles} inputRef={praInputRef}
+              onAdd={(f) => setPraFiles([...praFiles, ...f])}
+              onRemove={(id) => setPraFiles(praFiles.filter((f) => f.id !== id))}
             />
 
             <hr className="border-[#e5e7eb]" />
 
-            <FileSection
+            <MultiFileSection
               label="SPP Contribution Register" badge="SPP"
               badgeColor="bg-[#f0fdf4] text-[#15803d] border border-[#bbf7d0]"
               description="Upload one or more SPP files. Uses 'Perm. Emp. No.' and 'Surname' columns."
-              files={sppFiles} fileInputRef={sppFileInputRef}
-              referenceFile={sppReferenceFile} refInputRef={sppRefInputRef}
-              refDialogOpen={sppRefOpen} setRefDialogOpen={setSppRefOpen}
-              onAddFiles={(f) => setSppFiles([...sppFiles, ...f])}
-              onRemoveFile={(id) => setSppFiles(sppFiles.filter((f) => f.id !== id))}
-              onSetReference={setSppReferenceFile}
-              onRemoveReference={() => setSppReferenceFile(null)}
+              files={sppFiles} inputRef={sppInputRef}
+              onAdd={(f) => setSppFiles([...sppFiles, ...f])}
+              onRemove={(id) => setSppFiles(sppFiles.filter((f) => f.id !== id))}
             />
           </div>
         </div>
@@ -307,6 +292,12 @@ export default function UploadPage() {
           </div>
         </div>
       </div>
+
+      <ReferenceDialog
+        open={refOpen} onClose={() => setRefOpen(false)}
+        file={referenceFile} inputRef={refInputRef}
+        onSet={setReferenceFile} onRemove={() => setReferenceFile(null)}
+      />
     </div>
   );
 }
