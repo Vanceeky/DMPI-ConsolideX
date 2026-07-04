@@ -75,10 +75,47 @@ function StatBox({
 // ─── Sheet pill ───────────────────────────────────────────────────────────────
 
 function SheetPill({ sheet }: { sheet: SheetInfo }) {
+  const hasTotal   = sheet.sourceGrandTotal !== undefined && sheet.sourceGrandTotal > 0;
+  const totalMatch = hasTotal &&
+    Math.abs((sheet.computedGrandTotal ?? 0) - (sheet.sourceGrandTotal ?? 0)) < 0.02;
+
   return (
-    <div className="flex flex-col gap-1.5 bg-[#f9fafb] border border-[#e5e7eb] rounded-lg px-3 py-2.5 min-w-[80px]">
-      <p className="text-[11px] font-semibold text-[#374151] leading-none">{sheet.name}</p>
+    <div className={cn(
+      "flex flex-col gap-1.5 rounded-lg px-3 py-2.5 min-w-[100px] border",
+      hasTotal
+        ? totalMatch
+          ? "bg-[#f0fdf4] border-[#bbf7d0]"
+          : "bg-[#fef2f2] border-[#fecaca]"
+        : "bg-[#f9fafb] border-[#e5e7eb]"
+    )}>
+      {/* Tab name + match indicator */}
+      <div className="flex items-center justify-between gap-1">
+        <p className="text-[11px] font-semibold text-[#374151] leading-none">{sheet.name}</p>
+        {hasTotal && (
+          totalMatch
+            ? <CheckCircle2 size={10} className="text-[#16a34a] shrink-0" strokeWidth={2.5} />
+            : <XCircle size={10} className="text-[#dc2626] shrink-0" strokeWidth={2.5} />
+        )}
+      </div>
+
+      {/* Row count */}
       <p className="text-[10px] text-[#9ca3af]">{sheet.rows.toLocaleString()} rows</p>
+
+      {/* Grand total cross-check */}
+      {hasTotal && (
+        <div className="space-y-0.5">
+          <p className="text-[9px] text-[#6b7280]">
+            Source: {sheet.sourceGrandTotal!.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+          </p>
+          {!totalMatch && (
+            <p className="text-[9px] text-[#dc2626] font-semibold">
+              Computed: {(sheet.computedGrandTotal ?? 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Location / status badges */}
       <div className="flex flex-wrap gap-1">
         {sheet.inferredLocation && (
           <span className="text-[9px] font-bold bg-[#e0f2fe] text-[#0369a1] rounded-full px-1.5 py-0.5 leading-none">
@@ -161,6 +198,70 @@ function FileCard({
           status={result.missingRequiredColumns.length > 0 ? "error" : "neutral"}
         />
       </div>
+
+      {/* Cross-check against source file footer */}
+      {result.crossCheck && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider">
+            Source File Cross-Check
+          </p>
+
+          {/* Overall total match */}
+          <div className={cn(
+            "flex items-center justify-between px-3 py-2 rounded-lg text-[11px]",
+            result.crossCheck.totalAmountMatch
+              ? "bg-[#f0fdf4] border border-[#bbf7d0]"
+              : "bg-[#fef2f2] border border-[#fecaca]"
+          )}>
+            <span className="text-[#374151] font-medium">Grand Total</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[#6b7280]">
+                Source: {result.crossCheck.sourceTotalAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+              </span>
+              {result.crossCheck.totalAmountMatch
+                ? <CheckCircle2 size={12} className="text-[#16a34a]" strokeWidth={2.5} />
+                : <XCircle size={12} className="text-[#dc2626]" strokeWidth={2.5} />}
+            </div>
+          </div>
+
+          {/* Per-location breakdown */}
+          {result.crossCheck.locationResults.map(lr => (
+            <div key={lr.location} className={cn(
+              "px-3 py-2 rounded-lg text-[11px] border",
+              lr.countMatch && lr.amountMatch
+                ? "bg-[#f0fdf4] border-[#bbf7d0]"
+                : "bg-[#fef2f2] border-[#fecaca]"
+            )}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold text-[#374151]">{lr.location}</span>
+                {lr.countMatch && lr.amountMatch
+                  ? <CheckCircle2 size={12} className="text-[#16a34a]" strokeWidth={2.5} />
+                  : <AlertCircle size={12} className="text-[#dc2626]" strokeWidth={2.5} />}
+              </div>
+              <div className="flex gap-4 text-[#6b7280]">
+                <span>
+                  Rows: <span className={lr.countMatch ? "text-[#374151]" : "text-[#dc2626] font-semibold"}>
+                    {lr.computedCount}
+                  </span>
+                  {!lr.countMatch && ` (source: ${lr.sourceCount})`}
+                </span>
+                <span>
+                  Amount: <span className={lr.amountMatch ? "text-[#374151]" : "text-[#dc2626] font-semibold"}>
+                    {lr.computedAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                  </span>
+                  {!lr.amountMatch && ` (source: ${lr.sourceAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })})`}
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {result.crossCheck.locationResults.length === 0 && (
+            <p className="text-[11px] text-[#9ca3af] italic px-1">
+              No location summary found in source file footer.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Sheets breakdown — shown when file has multiple tabs */}
       {hasSheets && (

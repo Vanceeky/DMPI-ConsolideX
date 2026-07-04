@@ -28,16 +28,18 @@ function setStyle(ws: XLSX.WorkSheet, r: number, c: number, style: CellStyle): v
 
 const BOLD: CellStyle = { font: { bold: true } };
 
-// Column headers — thin border top AND bottom
+// Column headers — thin border on all four sides
 const HEADER_STYLE: CellStyle = {
   font: { bold: true },
   border: {
     top:    { style: "thin", color: { rgb: "000000" } },
     bottom: { style: "thin", color: { rgb: "000000" } },
+    left:   { style: "thin", color: { rgb: "000000" } },
+    right:  { style: "thin", color: { rgb: "000000" } },
   },
 };
 
-// Total row — medium (thick-ish) border top AND bottom
+// Total row — medium border top + bottom only (no left/right on empty cells)
 const TOTAL_STYLE: CellStyle = {
   font: { bold: true },
   border: {
@@ -216,7 +218,7 @@ function buildPRASheet(records: PRAOutputRecord[], metadata: FileMetadata): XLSX
   const summary  = buildPRASummary(records);
 
   const rows: unknown[][] = [
-    [metadata.title || "PRA Contribution Register"], // row 0
+    ["PRA Contribution Register"],                   // row 0 — stripped of location/type suffix
     [metadata.company],                              // row 1
     [metadata.period],                               // row 2
     [],                                              // row 3 blank
@@ -227,6 +229,7 @@ function buildPRASheet(records: PRAOutputRecord[], metadata: FileMetadata): XLSX
   ];
 
   const ws          = XLSX.utils.aoa_to_sheet(rows);
+  ws['!sheetViews'] = [{ showGridLines: false }];
   const totalRowIdx = 5 + dataRows.length;
   applySheetStyles(ws, PRA_HEADERS.length, totalRowIdx, totalRowIdx + 1, summary);
   return ws;
@@ -244,7 +247,7 @@ function buildSPPSheet(records: SPPOutputRecord[], metadata: FileMetadata): XLSX
   const summary  = buildSPPSummary(records);
 
   const rows: unknown[][] = [
-    [metadata.title || "SPP Contribution Register"],
+    ["SPP Contribution Register"],                   // row 0 — stripped of location/type suffix
     [metadata.company],
     [metadata.period],
     [],
@@ -255,6 +258,7 @@ function buildSPPSheet(records: SPPOutputRecord[], metadata: FileMetadata): XLSX
   ];
 
   const ws          = XLSX.utils.aoa_to_sheet(rows);
+  ws['!sheetViews'] = [{ showGridLines: false }];
   const totalRowIdx = 5 + dataRows.length;
   applySheetStyles(ws, SPP_HEADERS.length, totalRowIdx, totalRowIdx + 1, summary);
   return ws;

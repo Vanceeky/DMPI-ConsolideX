@@ -62,6 +62,8 @@ export interface SheetInfo {
   rows: number;
   inferredLocation: string;
   inferredStatus: string;
+  sourceGrandTotal?: number;   // Grand Total from the source file's footer for this tab
+  computedGrandTotal?: number; // Sum we computed from the parsed records for this tab
 }
 
 export interface FileValidationResult {
@@ -76,6 +78,8 @@ export interface FileValidationResult {
   isValid: boolean;
   metadata: FileMetadata;
   sheets: SheetInfo[];
+  sourceFooter?: SourceFooter;
+  crossCheck?: CrossCheckResult;
 }
 
 export interface ReferenceValidationResult {
@@ -86,6 +90,33 @@ export interface ReferenceValidationResult {
   detectedColumns: string[];
   missingRequiredColumns: string[];
   isValid: boolean;
+}
+
+export interface FooterLocationTotal {
+  location: string;   // "BUGO" or "PLANTATION"
+  count: number;
+  totalAmount: number; // sum of all contribution columns (EE+ER for SPP, regular for PRA)
+}
+
+export interface SourceFooter {
+  grandTotalAmount: number;
+  locations: FooterLocationTotal[];
+}
+
+export interface CrossCheckResult {
+  hasDiscrepancy: boolean;
+  sourceTotalAmount: number;
+  computedTotalAmount: number;
+  totalAmountMatch: boolean;
+  locationResults: {
+    location: string;
+    sourceCount: number;
+    computedCount: number;
+    sourceAmount: number;
+    computedAmount: number;
+    countMatch: boolean;
+    amountMatch: boolean;
+  }[];
 }
 
 export interface ValidationState {

@@ -8,7 +8,15 @@ import type {
   ReferenceValidationResult,
   SheetInfo,
   FileType,
+  SourceFooter,
+  CrossCheckResult,
 } from "./types";
+
+// ─── Numeric helper ───────────────────────────────────────────────────────────
+
+function parseNumeric(val: string): number {
+  return parseFloat(String(val || "").replace(/,/g, "").trim()) || 0;
+}
 
 // ─── Column aliases ───────────────────────────────────────────────────────────
 
@@ -94,6 +102,15 @@ function inferLocationFromSheetName(sheetName: string): string {
   return "";
 }
 
+// Normalize any raw location value to BUGO or PLANTATION.
+// If both tab inference and column are empty, returns "" (no location info).
+function normalizeLocation(raw: string): string {
+  if (!raw || !raw.trim()) return "";
+  const loc = raw.toUpperCase().trim();
+  if (loc === "BUGO" || loc.includes("BUGO")) return "BUGO";
+  return "PLANTATION"; // CAMP PHILLIPS (COMPOUND), FAR EAST, PLANTATION, etc.
+}
+
 // ─── Excel I/O ────────────────────────────────────────────────────────────────
 
 async function readWorkbook(file: File): Promise<XLSX.WorkBook> {
@@ -150,6 +167,54 @@ function isEmptyRow(row: string[]): boolean {
   return row.every((c) => !c || c.trim() === "");
 }
 
+// ─── Footer parser ────────────────────────────────────────────────────────────
+
+function parseFooter(rows: string[][], stopIdx: number): SourceFooter {
+  // Extract grand total from the Total: row (rightmost numeric value)
+  const totalRow = stopIdx < rows.length ? rows[stopIdx] : [];
+  let grandTotalAmount = 0;
+  for (let i = totalRow.length - 1; i >= 0; i--) {
+    const v = parseNumeric(totalRow[i]);
+    if (v > 0) { grandTotalAmount = v; break; }
+  }
+
+  const locations: SourceFooter["locations"] = [];
+  let currentLoc = "";
+
+  // Scan up to 300 rows after the stop for the footer section
+  const limit = Math.min(stopIdx + 300, rows.length);
+  for (let i = stopIdx + 1; i < limit; i++) {
+    const row = rows[i];
+    if (isEmptyRow(row)) continue;
+
+    const first  = normalize(row[0] ?? "");
+    const second = normalize(row[1] ?? "");
+
+    // Detect location header rows (e.g. "BUGO", "PLANTATION", or "Location | BUGO")
+    let locName = "";
+    if (first === "bugo" || (first.includes("bugo") && !first.includes("grand"))) locName = "BUGO";
+    else if (first === "plantation" || (first.includes("plantation") && !first.includes("grand"))) locName = "PLANTATION";
+    else if (first === "location") {
+      if (second.includes("bugo")) locName = "BUGO";
+      else if (second.includes("plantation")) locName = "PLANTATION";
+    }
+
+    if (locName) { currentLoc = locName; continue; }
+
+    // Detect Grand Total row within a location block
+    if (currentLoc && (first === "grand total" || first.startsWith("grand"))) {
+      const count = parseInt(String(row[1] || "0").replace(/,/g, "")) || 0;
+      // Sum all numeric values from column 2 onwards (handles both PRA single-amount and SPP EE+ER)
+      let total = 0;
+      for (let c = 2; c < row.length; c++) total += parseNumeric(row[c]);
+      locations.push({ location: currentLoc, count, totalAmount: total });
+      currentLoc = "";
+    }
+  }
+
+  return { grandTotalAmount, locations };
+}
+
 // ─── Parse PRA file (all sheets — tab location prevails over column) ──────────
 
 export async function parsePRAFile(file: File): Promise<{
@@ -157,6 +222,7 @@ export async function parsePRAFile(file: File): Promise<{
   metadata: FileMetadata;
   detectedColumns: string[];
   sheets: SheetInfo[];
+  footer: SourceFooter;
 }> {
   const wb = await readWorkbook(file);
 
@@ -165,6 +231,10 @@ export async function parsePRAFile(file: File): Promise<{
   const allSheets:  SheetInfo[]    = [];
   let firstMeta: FileMetadata = { title: "", company: "", period: "" };
   let isFirst = true;
+
+  // Accumulate footer data across sheets
+  let combinedGrandTotal = 0;
+  const combinedLocations: Map<string, { count: number; totalAmount: number }> = new Map();
 
   for (const sheetName of wb.SheetNames) {
     const rows = getSheetRows(wb, sheetName);
@@ -194,16 +264,19 @@ export async function parsePRAFile(file: File): Promise<{
 
     const sheetStart = allRecords.length;
 
+    let dataStopIdx = rows.length;
     for (let i = hIdx + 1; i < rows.length; i++) {
       const row = rows[i];
-      if (isStopRow(row)) break;
+      if (isStopRow(row)) { dataStopIdx = i; break; }
       if (isEmptyRow(row)) continue;
       const chapa = col.chapa >= 0 ? row[col.chapa] : "";
       if (!chapa) continue;
 
-      // Tab name prevails over column value for location
+      // Tab name prevails; then normalize raw value → BUGO or PLANTATION
       const colLocation = col.location >= 0 ? row[col.location] : "";
-      const location    = inferredLocation !== "" ? inferredLocation : colLocation;
+      const location    = normalizeLocation(
+        inferredLocation !== "" ? inferredLocation : colLocation
+      );
 
       // Tab name / metadata prevails for status if column is absent
       const colStatus     = col.empStatus >= 0 ? row[col.empStatus] : "";
@@ -221,19 +294,47 @@ export async function parsePRAFile(file: File): Promise<{
       });
     }
 
+    // Parse this sheet's footer and merge into combined totals
+    const sheetFooter = parseFooter(rows, dataStopIdx);
+    combinedGrandTotal += sheetFooter.grandTotalAmount;
+    for (const fl of sheetFooter.locations) {
+      const existing = combinedLocations.get(fl.location);
+      if (existing) {
+        existing.count       += fl.count;
+        existing.totalAmount += fl.totalAmount;
+      } else {
+        combinedLocations.set(fl.location, { count: fl.count, totalAmount: fl.totalAmount });
+      }
+    }
+
+    const sheetRecords = allRecords.slice(sheetStart);
+    const computedTotal = sheetRecords.reduce((s, r) => s + parseNumeric(String(r.regularContribution)), 0);
+
     allSheets.push({
-      name:             sheetName,
-      rows:             allRecords.length - sheetStart,
+      name:                sheetName,
+      rows:                allRecords.length - sheetStart,
       inferredLocation,
       inferredStatus,
+      sourceGrandTotal:    sheetFooter.grandTotalAmount,
+      computedGrandTotal:  computedTotal,
     });
   }
+
+  const footer: SourceFooter = {
+    grandTotalAmount: combinedGrandTotal,
+    locations: Array.from(combinedLocations.entries()).map(([location, v]) => ({
+      location,
+      count:       v.count,
+      totalAmount: v.totalAmount,
+    })),
+  };
 
   return {
     records:         allRecords,
     metadata:        firstMeta,
     detectedColumns: Array.from(allColumns),
     sheets:          allSheets,
+    footer,
   };
 }
 
@@ -244,6 +345,7 @@ export async function parseSPPFile(file: File): Promise<{
   metadata: FileMetadata;
   detectedColumns: string[];
   sheets: SheetInfo[];
+  footer: SourceFooter;
 }> {
   const wb = await readWorkbook(file);
 
@@ -252,6 +354,10 @@ export async function parseSPPFile(file: File): Promise<{
   const allSheets:  SheetInfo[]    = [];
   let firstMeta: FileMetadata = { title: "", company: "", period: "" };
   let isFirst = true;
+
+  // Accumulate footer data across sheets
+  let combinedGrandTotal = 0;
+  const combinedLocations: Map<string, { count: number; totalAmount: number }> = new Map();
 
   for (const sheetName of wb.SheetNames) {
     const rows = getSheetRows(wb, sheetName);
@@ -289,19 +395,24 @@ export async function parseSPPFile(file: File): Promise<{
       erCont:    findContains(headers, SPP_ER_SUBSTR),
     };
 
+    const sheetStart = allRecords.length;
+
+    let dataStopIdx = rows.length;
     for (let i = hIdx + 1; i < rows.length; i++) {
       const row = rows[i];
-      if (isStopRow(row)) break;
+      if (isStopRow(row)) { dataStopIdx = i; break; }
       if (isEmptyRow(row)) continue;
 
       const chapa = col.permEmp >= 0 ? row[col.permEmp] : "";
       if (!chapa) continue;
 
-      // Tab name prevails; fall back to location code column, then raw column value
+      // Tab name prevails; fall back to location code → raw column; normalize to BUGO/PLANTATION
       const rawLocation = col.location >= 0 ? row[col.location] : "";
-      const location    = inferredLocation !== ""
-        ? inferredLocation
-        : resolveLocationCode(rawLocation) || rawLocation;
+      const location    = normalizeLocation(
+        inferredLocation !== ""
+          ? inferredLocation
+          : resolveLocationCode(rawLocation) || rawLocation
+      );
 
       // Resolve status: column first, fall back to sheet-name inference
       const rawStatus    = col.empStatus >= 0 ? row[col.empStatus] : "";
@@ -319,21 +430,47 @@ export async function parseSPPFile(file: File): Promise<{
       });
     }
 
+    // Parse this sheet's footer and merge into combined totals
+    const sheetFooter = parseFooter(rows, dataStopIdx);
+    combinedGrandTotal += sheetFooter.grandTotalAmount;
+    for (const fl of sheetFooter.locations) {
+      const existing = combinedLocations.get(fl.location);
+      if (existing) {
+        existing.count       += fl.count;
+        existing.totalAmount += fl.totalAmount;
+      } else {
+        combinedLocations.set(fl.location, { count: fl.count, totalAmount: fl.totalAmount });
+      }
+    }
+
     // Record sheet-level info for validation display
-    const sheetRowCount = allRecords.length - (allSheets.reduce((s, sh) => s + sh.rows, 0));
+    const sheetRecords = allRecords.slice(sheetStart);
+    const computedTotal = sheetRecords.reduce((s, r) => s + parseNumeric(String(r.sppEeCont)) + parseNumeric(String(r.sppErCont)), 0);
     allSheets.push({
-      name:             sheetName,
-      rows:             sheetRowCount,
+      name:                sheetName,
+      rows:                sheetRecords.length,
       inferredLocation,
       inferredStatus,
+      sourceGrandTotal:    sheetFooter.grandTotalAmount,
+      computedGrandTotal:  computedTotal,
     });
   }
+
+  const footer: SourceFooter = {
+    grandTotalAmount: combinedGrandTotal,
+    locations: Array.from(combinedLocations.entries()).map(([location, v]) => ({
+      location,
+      count:       v.count,
+      totalAmount: v.totalAmount,
+    })),
+  };
 
   return {
     records:          allRecords,
     metadata:         firstMeta,
     detectedColumns:  Array.from(allColumns),
     sheets:           allSheets,
+    footer,
   };
 }
 
@@ -408,7 +545,7 @@ export async function validateTransactionFile(
         ? await parsePRAFile(uploadedFile.file)
         : await parseSPPFile(uploadedFile.file);
 
-    const { records, metadata, detectedColumns } = parsed;
+    const { records, metadata, detectedColumns, footer } = parsed;
     const required = fileType === "pra" ? PRA_REQUIRED : SPP_REQUIRED;
 
     const missingRequiredColumns = required
@@ -423,6 +560,49 @@ export async function validateTransactionFile(
       seen.add(c);
     }
 
+    // ── Cross-check: compare footer totals against parsed records ─────────────
+    const TOLERANCE = 0.02;
+
+    const computedTotal =
+      fileType === "pra"
+        ? records.reduce((s, r: any) => s + parseNumeric(String(r.regularContribution)), 0)
+        : records.reduce(
+            (s, r: any) => s + parseNumeric(String(r.sppEeCont)) + parseNumeric(String(r.sppErCont)),
+            0
+          );
+
+    const totalAmountMatch = Math.abs(computedTotal - footer.grandTotalAmount) <= TOLERANCE;
+
+    const locationResults = footer.locations.map((fl) => {
+      const ourRecs = records.filter((r: any) => r.location === fl.location);
+      const ourCount = ourRecs.length;
+      const ourAmount =
+        fileType === "pra"
+          ? ourRecs.reduce((s, r: any) => s + parseNumeric(String(r.regularContribution)), 0)
+          : ourRecs.reduce(
+              (s, r: any) => s + parseNumeric(String(r.sppEeCont)) + parseNumeric(String(r.sppErCont)),
+              0
+            );
+      return {
+        location:       fl.location,
+        sourceCount:    fl.count,
+        computedCount:  ourCount,
+        sourceAmount:   fl.totalAmount,
+        computedAmount: ourAmount,
+        countMatch:     ourCount === fl.count,
+        amountMatch:    Math.abs(ourAmount - fl.totalAmount) <= TOLERANCE,
+      };
+    });
+
+    const crossCheck: CrossCheckResult = {
+      hasDiscrepancy:      !totalAmountMatch || locationResults.some((l) => !l.countMatch || !l.amountMatch),
+      sourceTotalAmount:   footer.grandTotalAmount,
+      computedTotalAmount: computedTotal,
+      totalAmountMatch,
+      locationResults,
+    };
+    // ─────────────────────────────────────────────────────────────────────────
+
     return {
       fileId:                uploadedFile.id,
       fileName:              uploadedFile.name,
@@ -435,6 +615,8 @@ export async function validateTransactionFile(
       isValid:               missingRequiredColumns.length === 0,
       metadata,
       sheets:                parsed.sheets ?? [],
+      sourceFooter:          footer,
+      crossCheck,
     };
   } catch {
     return {

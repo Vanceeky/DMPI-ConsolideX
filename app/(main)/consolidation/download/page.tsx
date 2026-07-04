@@ -170,8 +170,8 @@ export default function DownloadPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-[14px] font-semibold text-[#111827] truncate" title={processingResult.outputFileName}>
-                        {processingResult.outputFileName}
+                      <p className="text-[14px] font-semibold text-[#111827] truncate" title={outputFileName}>
+                        {outputFileName}
                       </p>
                       <span className="shrink-0 text-[10px] font-bold bg-[#dcfce7] text-[#15803d] rounded-full px-2 py-0.5 uppercase tracking-wide">
                         Ready
